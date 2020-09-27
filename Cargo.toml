@@ -1,0 +1,20 @@
+[package]
+name = "github-changelist"
+version = "1.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yoshuawuyts/github-changelist"
+documentation = "https://docs.rs/github-changelist"
+description = "Get the list of merged PRs on GitHub since the last release"
+readme = "README.md"
+edition = "2018"
+keywords = []
+categories = []
+authors = [
+    "Yoshua Wuyts <yoshuawuyts@gmail.com>"
+]
+
+[features]
+
+[dependencies]
+
+[dev-dependencies]
