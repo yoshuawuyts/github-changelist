@@ -43,7 +43,7 @@
 
 ## Installation
 ```sh
-$ cargo add github-changelist
+$ cargo install github-changelist
 ```
 
 ## Safety
