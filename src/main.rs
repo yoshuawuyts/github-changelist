@@ -1,6 +1,6 @@
-use github_auth::{Authenticator, Scope};
-use serde::{Serialize, Deserialize};
 use chrono::DateTime;
+use github_auth::{Authenticator, Scope};
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 /// Generate a list of merged PRs since the last release.
@@ -9,7 +9,7 @@ struct Opts {
     /// GitHub username of the repo.
     user_name: String,
     /// GitHub repo name.
-    repo_name: String
+    repo_name: String,
 }
 
 #[async_std::main]
@@ -20,32 +20,43 @@ async fn main() -> surf::Result<()> {
         .build();
     let token = auth.auth().await?;
 
-    let mut res = surf::get(format!("https://api.github.com/repos/{}/{}/releases?access_token={}", opts.user_name, opts.repo_name, token)).await?;
+    let mut res = surf::get(format!(
+        "https://api.github.com/repos/{}/{}/releases?access_token={}",
+        opts.user_name, opts.repo_name, token
+    ))
+    .await?;
     let releases: Vec<Release> = res.body_json().await?;
 
     let latest = releases.first().expect("no releases found");
     let when = DateTime::parse_from_rfc3339(&latest.published_at)?;
 
-    let mut res = surf::get(format!("https://api.github.com/repos/{}/{}/pulls?access_token={}&state=closed", opts.user_name, opts.repo_name, token)).await?;
-    let pulls: Vec<Pull> = res.body_json().await?;
-    let pulls: Vec<String> = pulls.into_iter().filter(|pull| {
-        let merged_at = match pull.merged_at.as_str() {
-            Some(val) => val,
-            None => return false,
-        };
-        let merged = match DateTime::parse_from_rfc3339(merged_at) {
-            Err(_) => return false,
-            Ok(v) => v,
-        };
+    let mut res = surf::get(format!(
+        "https://api.github.com/repos/{}/{}/pulls?access_token={}&state=closed",
+        opts.user_name, opts.repo_name, token
+    ))
+    .await?;
 
-        merged > when 
-    })
-    .map(|pull| {
-        format!("- {} #{}", pull.title, pull.number)
-    }).collect();
+    let pulls: Vec<Pull> = res.body_json().await?;
+    let pulls: Vec<String> = pulls
+        .into_iter()
+        .filter(|pull| {
+            let merged_at = match pull.merged_at.as_str() {
+                Some(val) => val,
+                None => return false,
+            };
+            let merged = match DateTime::parse_from_rfc3339(merged_at) {
+                Err(_) => return false,
+                Ok(v) => v,
+            };
+
+            merged > when
+        })
+        .map(|pull| format!("- {} #{}", pull.title, pull.number))
+        .collect();
     println!("{}", pulls.join("\n"));
     Ok(())
 }
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Release {
@@ -417,7 +428,7 @@ pub struct Repo {
     pub clone_url: String,
     #[serde(rename = "svn_url")]
     pub svn_url: String,
-    pub homepage: String,
+    pub homepage: Option<String>,
     pub size: i64,
     #[serde(rename = "stargazers_count")]
     pub stargazers_count: i64,
