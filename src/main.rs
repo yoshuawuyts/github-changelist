@@ -2,6 +2,7 @@ use chrono::DateTime;
 use github_auth::{Authenticator, Scope};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+use surf::http::headers::AUTHORIZATION;
 
 /// Generate a list of merged PRs since the last release.
 #[derive(structopt::StructOpt)]
@@ -15,15 +16,22 @@ struct Opts {
 #[async_std::main]
 async fn main() -> surf::Result<()> {
     let opts = Opts::from_args();
-    let auth = Authenticator::builder("github_auth main example".into())
+    let token_name = format!(
+        "{} on {} ({})",
+        env!("CARGO_PKG_NAME"),
+        whoami::hostname(),
+        whoami::distro()
+    );
+    let auth = Authenticator::builder(token_name)
         .scope(Scope::PublicRepo)
         .build();
     let token = auth.auth().await?;
 
     let mut res = surf::get(format!(
-        "https://api.github.com/repos/{}/{}/releases?access_token={}",
-        opts.user_name, opts.repo_name, token
+        "https://api.github.com/repos/{}/{}/releases",
+        opts.user_name, opts.repo_name
     ))
+    .header(AUTHORIZATION, format!("token {}", token))
     .await?;
     let releases: Vec<Release> = res.body_json().await?;
 
@@ -31,9 +39,10 @@ async fn main() -> surf::Result<()> {
     let when = DateTime::parse_from_rfc3339(&latest.published_at)?;
 
     let mut res = surf::get(format!(
-        "https://api.github.com/repos/{}/{}/pulls?access_token={}&state=closed",
-        opts.user_name, opts.repo_name, token
+        "https://api.github.com/repos/{}/{}/pulls?state=closed",
+        opts.user_name, opts.repo_name
     ))
+    .header(AUTHORIZATION, format!("token {}", token))
     .await?;
 
     let pulls: Vec<Pull> = res.body_json().await?;
